@@ -1,8 +1,15 @@
 package alessandro.agheben.u5w2d3.services;
 
 import alessandro.agheben.u5w2d3.entities.Author;
+import alessandro.agheben.u5w2d3.exceptions.BadRequestException;
 import alessandro.agheben.u5w2d3.exceptions.NoFoundException;
+import alessandro.agheben.u5w2d3.repositories.AuthorDAO;
 import lombok.Getter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,57 +21,46 @@ import java.util.Random;
 @Service
 @Getter
 public class AuthorService {
+    @Autowired
+    AuthorDAO authorDAO;
 
-    private List<Author> authors = new ArrayList<>();
+    public Page<Author> getAuthors(int page, int size, String orderBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orderBy));
+        return authorDAO.findAll(pageable);
+    }
 
-
-    public Author save(Author body) {
+    public Author save(Author author) {
         Random random = new Random();
-        body.setId(random.nextInt(1, 3000));
-        LocalDate date = LocalDate.of(random.nextInt(1950, 2000), random.nextInt(1, 12), random.nextInt(1, 30));
+        authorDAO.findByEmail(author.getEmail()).ifPresent(author1 -> {
+            throw new BadRequestException("Email " + author.getEmail() + " già in uso !");
+        });
 
-        body.setDateOfBirth(date);
+        author.setAvatarUrl("https://ui-avatars.com/api/?name=" + author.getName() + "+" + author.getSurname());
+        author.setDateOfBirth(LocalDate.of(random.nextInt(1940, 2010), random.nextInt(1, 13), random.nextInt(1, 29)));
 
-        this.authors.add(body);
-        return body;
+
+        return authorDAO.save(author);
     }
 
     public Author findById(long id) {
-
-        Author found = null;
-
-        for (int i = 0; i < authors.size(); i++) {
-            if (authors.get(i).getId() == id) {
-                found = authors.get(i);
-            }
-        }
-        if (found == null) throw new NoFoundException(id);
-
-        return found;
+        return authorDAO.findById(id).orElseThrow(()->new NoFoundException(id));
     }
 
     public Author findByIdAndUpdate(long id, Author body) {
         Author found = this.findById(id);
+
         found.setName(body.getName());
         found.setSurname(body.getSurname());
-        found.setEmail(body.getEmail());
         found.setDateOfBirth(body.getDateOfBirth());
         found.setAvatarUrl(body.getAvatarUrl());
 
-        return body;
+        return authorDAO.save(body);
     }
 
     public void findByIdAndDelete(long id) {
 
-        Iterator<Author> iterator = this.authors.iterator();
-
-        while (iterator.hasNext()) {
-            Author current = iterator.next();
-            if (current.getId() == id) {
-                iterator.remove();
-            }
-        }
-
+        Author found = this.findById(id);
+        authorDAO.delete(found);
 
     }
 

@@ -12,6 +12,6 @@ public class AuthorPayload {
     private String name;
     private String surname;
     private String email;
-    private LocalDate dateOfBirth;
+  //  private LocalDate dateOfBirth;
     private String avatarUrl;
 }
